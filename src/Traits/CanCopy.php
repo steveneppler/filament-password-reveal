@@ -57,7 +57,8 @@ trait CanCopy
         return $this->evaluate($this->copyText ?? __('Copied to clipboard'));
     }
 
-    public function shouldNotifyOnCopy(): bool {
+    public function shouldNotifyOnCopy(): bool
+    {
         return $this->evaluate($this->notifyOnCopy);
     }
 }

@@ -1,171 +1,181 @@
 @php
-$datalistOptions = $getDatalistOptions();
+    $datalistOptions = $getDatalistOptions();
+    $extraAlpineAttributes = $getExtraAlpineAttributes();
+    $id = $getId();
+    $isConcealed = $isConcealed();
+    $isDisabled = $isDisabled();
+    $isPrefixInline = $isPrefixInline();
+    $isSuffixInline = $isSuffixInline();
+    $mask = $getMask();
+    $prefixActions = $getPrefixActions();
+    $prefixIcon = $getPrefixIcon();
+    $prefixLabel = $getPrefixLabel();
+    $suffixActions = $getSuffixActions();
+    $suffixIcon = $getSuffixIcon();
+    $suffixLabel = $getSuffixLabel();
+    $statePath = $getStatePath();
 
-$sideLabelClasses = ['whitespace-nowrap group-focus-within:text-primary-500', 'text-gray-400' => !$errors->has($getStatePath()), 'text-danger-400' => $errors->has($getStatePath())];
+$stylecode = '';
+    $x = 0;
+    if ($isRevealable() || $isGeneratable() || $isCopyable())
+     {
+        $x += $isRevealable() ? 2 : 0;
+        $x += $isGeneratable() ? 2 : 0;
+        $x += $isCopyable() ? 2 : 0;
+        $stylecode = 'isRtl ? \'padding-left: '.$x.'rem\' : \'padding-right: '.$x.'rem\'';
+     }
 
-$affixLabelClasses = ['whitespace-nowrap group-focus-within:text-primary-500', 'text-gray-400' => !$errors->has($getStatePath()), 'text-danger-400' => $errors->has($getStatePath())];
+    $generatePassword = '
+                    let chars = \''. $getPasswChars().'\';
+                    let minLen = '. $getPasswLength(). ';
+
+
+                    let password = [];
+                    while(password.length <= minLen){
+                        password.push(chars.charAt(Math.floor(Math.random() * 26)));
+                        password.push(chars.charAt(Math.floor(Math.random() * 26) +26));
+                        if(chars.length > 52 && password.length > 4){
+                            password.push(chars.charAt(Math.floor(Math.random() * 10) +52));
+                        }
+                        if(chars.length > 62 && password.length > 4){
+                            password.push(chars.charAt(Math.floor(Math.random() * 10) +62));
+                        }
+                    }
+                    password = password.slice(0, minLen).sort(() => Math.random() - 0.5).join(\'\')
+
+                    $wire.set(\'' . $getStatePath() . '\', password);
+                ';
+        if($shouldNotifyOnGenerate()){
+            $generatePassword .= 'new FilamentNotification()
+                            .title(\'' . $getGenerateText() . '\')
+                            .seconds(3)
+                            .success()
+                            .send();';
+        }
+
+    $copyPassword = ' copyPassword: function() {
+                    navigator.clipboard.writeText( $wire.get(\'' . $getStatePath() . '\'));
+                    ';
+                    if($shouldNotifyOnCopy() || true) {
+                       $copyPassword .= "new FilamentNotification()
+                            .title('" . $getCopyText() . "')
+                            .seconds(3)
+                            .success()
+                            .send();";
+                    }
+                $copyPassword .= '}';
+
+    $xdata = '{ show: true,
+            isRtl: false,
+            generatePasswd: function() {
+
+                ' . $generatePassword . '
+                },
+                ' . $copyPassword . '
+                }';
 @endphp
 
-<x-dynamic-component
-    :component="$getFieldWrapperView()"
-    :id="$getId()"
-    :label="$getLabel()"
-    :label-sr-only="$isLabelHidden()"
-    :helper-text="$getHelperText()"
-    :hint="$getHint()"
-    :hint-icon="$getHintIcon()"
-    :required="$isRequired()"
-    :state-path="$getStatePath()"
->
-    <div
-        {{ $attributes->merge($getExtraAttributes())->class(['flex items-center space-x-2 rtl:space-x-reverse group filament-forms-text-input-component']) }}>
-        @if (($prefixAction = $getPrefixAction()) && !$prefixAction->isHidden())
-            {{ $prefixAction }}
-        @endif
+<x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
+    <x-filament::input.wrapper
+        :disabled="$isDisabled"
+        :inline-prefix="$isPrefixInline"
+        :inline-suffix="$isSuffixInline"
+        :prefix="$prefixLabel"
+        :prefix-actions="$prefixActions"
+        :prefix-icon="$prefixIcon"
+        :suffix="$suffixLabel"
+        :suffix-actions="$suffixActions"
+        :suffix-icon="$suffixIcon"
+        :valid="! $errors->has($statePath)"
+        class="fi-fo-text-input"
+        :attributes="
+            \Filament\Support\prepare_inherited_attributes($getExtraAttributeBag())
+                ->class(['overflow-hidden relative'])
+        "
+        x-data="{{ $xdata }}"
+    >
+        <x-filament::input
+            :attributes="
+                \Filament\Support\prepare_inherited_attributes($getExtraInputAttributeBag())
+                    ->merge($extraAlpineAttributes, escape: false)
+                    ->merge([
+                        'autocapitalize' => $getAutocapitalize(),
+                        'autocomplete' => $getAutocomplete(),
+                        'autofocus' => $isAutofocused(),
+                        'disabled' => $isDisabled,
+                        'id' => $id,
+                        'inlinePrefix' => $isPrefixInline && (count($prefixActions) || $prefixIcon || filled($prefixLabel)),
+                        'inlineSuffix' => true,
+                        'inputmode' => $getInputMode(),
+                        'list' => $datalistOptions ? $id . '-list' : null,
+                        'max' => (! $isConcealed) ? $getMaxValue() : null,
+                        'maxlength' => (! $isConcealed) ? $getMaxLength() : null,
+                        'min' => (! $isConcealed) ? $getMinValue() : null,
+                        'minlength' => (! $isConcealed) ? $getMinLength() : null,
+                        'placeholder' => $getPlaceholder(),
+                        'readonly' => $isReadOnly(),
+                        'required' => $isRequired() && (! $isConcealed),
+                        'step' => $getStep(),
+                        ':type' => 'show ? \'password\' : \'text\'',
+                        ':style' => $stylecode,
+                        $applyStateBindingModifiers('wire:model') => $statePath,
+                        'x-data' => (count($extraAlpineAttributes) || filled($mask)) ? '{}' : null,
+                        'x-mask' . ($mask instanceof \Filament\Support\RawJs ? ':dynamic' : '') => filled($mask) ? $mask : null,
+                    ], escape: false)
 
-        @if ($icon = $getPrefixIcon())
-            <x-dynamic-component
-                :component="$icon"
-                class="h-5 w-5"
-            />
-        @endif
-
-        @if ($label = $getPrefixLabel())
-            <span @class($sideLabelClasses)>
-                {{ $label }}
-            </span>
-        @endif
-
-        <div
-            class="relative flex-1"
-            x-data="{
-                id: 0,
-                show: false,
-                isRtl: false,
-                generatePasswd: function() {
-                    let chars = '{{ $getPasswChars() }}';
-                    let password = '';
-                    for (let i = 0; i < {{ $getPasswLength() }}; i++) {
-                        password += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    $refs.{{ $getXRef() }}.value = password;
-                    $wire.set('{{ $getStatePath() }}', password);
-
-                    @if($shouldNotifyOnGenerate())
-                        new Notification()
-                            .title(@js($getGenerateText()))
-                            .seconds(3)
-                            .success()
-                            .send();
-                    @endif
-                },
-                copyPassword: function() {
-                    navigator.clipboard.writeText($refs.{{ $getXRef() }}.value);
-                    @if($shouldNotifyOnCopy())
-                        new Notification()
-                            .title(@js($getCopyText()))
-                            .seconds(3)
-                            .success()
-                            .send();
-                    @endif
-                },
-            }"
+            "
              x-init="$nextTick(() => { isRtl = document.documentElement.dir === 'rtl' })"
-        >
-            <input
-                x-ref="{{ $getXRef() }}"
-                :type="show ? 'text' : 'password'"
-                {{ $applyStateBindingModifiers('wire:model') }}="{{ $getStatePath() }}"
-                dusk="filament.forms.{{ $getStatePath() }}"
-                {!! ($autocomplete = $getAutocomplete()) ? "autocomplete=\"{$autocomplete}\"" : null !!}
-                {!! $isAutofocused() ? 'autofocus' : null !!}
-                {!! $isDisabled() ? 'disabled' : null !!}
-                id="{{ $getId() }}"
-                {!! filled($value = $getMaxValue()) ? "max=\"{$value}\"" : null !!}
-                {!! ($placeholder = $getPlaceholder()) ? "placeholder=\"{$placeholder}\"" : null !!}
-                {!! $isRequired() ? 'required' : null !!}
-                {{ $getExtraInputAttributeBag()->class([
-                    'block w-full transition duration-75 rounded-lg shadow-sm focus:border-primary-600 focus:ring-1 focus:ring-inset focus:ring-primary-600 disabled:opacity-70',
-                    'dark:bg-gray-700 dark:text-white' => config('forms.dark_mode'),
-                    'border-gray-300' => !$errors->has($getStatePath()),
-                    'dark:border-gray-600' => !$errors->has($getStatePath()) && config('forms.dark_mode'),
-                    'border-danger-600 ring-danger-600' => $errors->has($getStatePath()),
-                    '!pr-8' => $isRevealable() xor $isCopyable() xor $isGeneratable(),
-                    '!pr-14' => ($isRevealable() && $isCopyable()) xor ($isRevealable() && $isGeneratable()) xor ($isCopyable() && $isGeneratable()),
-                    '!pr-20' => $isRevealable() && $isCopyable() && $isGeneratable(),
-                ]) }}
-            >
-            <div class="absolute inset-y-0 flex items-center mr-1 ml-1 gap-1 pr-2 text-sm leading-5"  x-bind:class="isRtl ? 'left-0' : 'right-0'">
+             x-ref="{{ $getXRef() }}"
 
-                @if ($isGeneratable())
+        />
+
+        @if ($isRevealable() || $isGeneratable() || $isCopyable())
+
+<div
+            @class([
+                'flex items-center gap-x-1 pe-1',
+                'ps-1',
+                'border-s border-gray-200 ps-1 dark:border-white/10',
+                'absolute top-0  height-100'
+            ])
+            :style="isRtl ? 'left:0;height:100%' : 'right:0;height:100%'"
+        >
+        @if ($isRevealable())
+        <button type="button" class="flex hidden inset-y-0 right-0 justify-self-end items-center p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" @click="show = !show" :class="{'hidden': !show, 'block': show }">
+             {{svg($getShowIcon(), "w-5 h-5")}}
+        </button>
+        <button type="button" class="flex hidden inset-y-0 right-0 items-center p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" @click="show = !show" :class="{'block': !show, 'hidden': show }">
+              {{svg($getHideIcon(), "w-5 h-5")}}
+        </button>
+        @endif
+         @if ($isGeneratable())
                     <button
                         type="button"
                         x-on:click.prevent="generatePasswd()"
+                        class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1"
                     >
-                        <x-dynamic-component
-                            :component="$getGenerateIcon()"
-                            class="h-5 text-gray-400 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
-                        />
+                       {{svg($getGenerateIcon(), "w-5 h-5")}}
+
                     </button>
                 @endif
+
                 @if ($isCopyable())
                     <button
                         type="button"
                         x-on:click.prevent="copyPassword()"
+                        class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1"
                     >
-                        <x-dynamic-component
-                            :component="$getCopyIcon()"
-                            class="h-5 text-gray-400 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
-                        />
+                      {{svg($getCopyIcon(), "w-5 h-5")}}
+
                     </button>
                 @endif
-
-                @if ($isRevealable())
-                    <button
-                        type="button"
-                        @click="show = !show"
-                        x-bind:class="{ 'block': show, 'hidden': !show }"
-                    >
-                        <x-dynamic-component
-                            :component="$getShowIcon()"
-                            class="h-5 text-gray-400 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
-                        />
-                    </button>
-
-                    <button
-                        type="button"
-                        @click="show = !show"
-                        x-bind:class="{ 'hidden': show, 'block': !show }"
-                    >
-                        <x-dynamic-component
-                            :component="$getHideIcon()"
-                            class="h-5 text-gray-400 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
-                        />
-                    </button>
+</div>
                 @endif
-            </div>
-        </div>
 
-        @if ($label = $getSuffixLabel())
-            <span @class($affixLabelClasses)>
-                {{ $label }}
-            </span>
-        @endif
-
-        @if ($icon = $getSuffixIcon())
-            <x-dynamic-component
-                :component="$icon"
-                class="h-5 w-5"
-            />
-        @endif
-
-        @if (($suffixAction = $getSuffixAction()) && !$suffixAction->isHidden())
-            {{ $suffixAction }}
-        @endif
-    </div>
+    </x-filament::input.wrapper>
 
     @if ($datalistOptions)
-        <datalist id="{{ $getId() }}-list">
+        <datalist id="{{ $id }}-list">
             @foreach ($datalistOptions as $option)
                 <option value="{{ $option }}" />
             @endforeach

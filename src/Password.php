@@ -17,13 +17,24 @@ class Password extends TextInput
 
     protected string $showIcon = 'heroicon-o-eye';
 
-    protected string $hideIcon = 'heroicon-o-eye-off';
+    protected string $hideIcon = 'heroicon-o-eye-slash';
 
-    protected bool|Closure  $revealable = true;
+    protected bool|Closure $revealable = true;
+
+    protected bool|Closure  $initiallyHidden = true;
+
+
 
     public function revealable(bool|Closure $condition = true): static
     {
         $this->revealable = $condition;
+
+        return $this;
+    }
+
+    public function initiallyHidden(bool|Closure $condition = true): static
+    {
+        $this->initiallyHidden = $condition;
 
         return $this;
     }
@@ -55,6 +66,11 @@ class Password extends TextInput
     public function isRevealable(): bool
     {
         return (bool) $this->evaluate($this->revealable);
+    }
+
+    public function isInitiallyHidden(): bool
+    {
+        return (bool) $this->evaluate($this->initiallyHidden);
     }
 
     public function getXRef(): string
